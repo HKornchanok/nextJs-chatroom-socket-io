@@ -30,20 +30,18 @@ export default function App({ Component, pageProps }: AppProps) {
   useEffect(() => {
     console.log('Initializing Socket.IO connection...')
     
-    // Create socket instance with Vercel-compatible configuration
+    // Create socket instance with Railway-optimized configuration
     const socketInstance = io({
-      path: '/api/socketio',
-      // Use polling as primary transport for Vercel compatibility
-      transports: ['polling'],
-      timeout: 30000,
+      path: '/api/socket',
+      // Use both polling and WebSocket for Railway (full support)
+      transports: ['polling', 'websocket'],
+      timeout: 20000,
       forceNew: true,
       reconnection: true,
-      reconnectionAttempts: 10,
+      reconnectionAttempts: 5,
       reconnectionDelay: 1000,
       reconnectionDelayMax: 5000,
-      autoConnect: true,
-      upgrade: false, // Disable automatic upgrade to WebSocket
-      rememberUpgrade: false
+      autoConnect: true
     })
 
     console.log('Socket instance created:', socketInstance)

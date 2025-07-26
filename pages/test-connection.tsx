@@ -9,17 +9,16 @@ export default function TestConnection() {
 
   useEffect(() => {
     const socketInstance = io({
-      path: '/api/socketio',
-      transports: ['polling'],
-      timeout: 30000,
+      path: '/api/socket',
+      // Use both polling and WebSocket for Railway (full support)
+      transports: ['polling', 'websocket'],
+      timeout: 20000,
       forceNew: true,
       reconnection: true,
-      reconnectionAttempts: 10,
+      reconnectionAttempts: 5,
       reconnectionDelay: 1000,
       reconnectionDelayMax: 5000,
-      autoConnect: true,
-      upgrade: false,
-      rememberUpgrade: false
+      autoConnect: true
     })
 
     socketInstance.on('connect', () => {
@@ -87,7 +86,7 @@ export default function TestConnection() {
   return (
     <div className="min-h-screen bg-gray-100 p-8">
       <div className="max-w-4xl mx-auto">
-        <h1 className="text-3xl font-bold mb-8">Socket.IO Connection Test</h1>
+        <h1 className="text-3xl font-bold mb-8">Socket.IO Connection Test (Railway)</h1>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           {/* Connection Status */}
@@ -100,6 +99,9 @@ export default function TestConnection() {
               </div>
               <div className="text-sm text-gray-600">
                 Socket ID: {socket?.id || 'Not connected'}
+              </div>
+              <div className="text-sm text-gray-600">
+                Transport: {socket?.io?.engine?.transport?.name || 'Unknown'}
               </div>
             </div>
             
