@@ -66,6 +66,7 @@ export default function ChatRoom() {
     socket.emit('typingStop')
   }
 
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setNewMessage(e.target.value)
     
@@ -356,6 +357,11 @@ export default function ChatRoom() {
             {messages.map((message) => {
               const isOwnMessage = message.user === userName
               
+              // Only show system messages to admins
+              if (message.type === 'system' && userType !== 'admin') {
+                return null
+              }
+              
               return (
                 <div
                   key={message.id}
@@ -528,7 +534,14 @@ export default function ChatRoom() {
             {/* Pending Requests */}
             {pendingGuests.length > 0 && (
               <div className="mb-6">
-                <h4 className="text-sm font-medium text-gray-700 mb-2">Pending Requests</h4>
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="text-sm font-medium text-gray-700">Pending Requests</h4>
+                  {users.guest && (
+                    <span className="text-xs text-red-600 bg-red-50 px-2 py-1 rounded-full">
+                      Room Full
+                    </span>
+                  )}
+                </div>
                 <div className="space-y-2">
                   {pendingGuests.map((guest) => (
                     <div key={guest.id} className="flex items-center justify-between p-3 bg-yellow-50 rounded-lg">
@@ -544,7 +557,13 @@ export default function ChatRoom() {
                       <div className="flex space-x-1">
                         <button
                           onClick={() => handleApproveGuest(guest.id)}
-                          className="px-3 py-1 text-xs bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
+                          disabled={!!users.guest}
+                          className={`px-3 py-1 text-xs rounded-lg transition-colors ${
+                            users.guest 
+                              ? 'bg-gray-400 text-gray-200 cursor-not-allowed' 
+                              : 'bg-green-500 text-white hover:bg-green-600'
+                          }`}
+                          title={users.guest ? 'Room is full. Kick current guest first.' : 'Approve guest'}
                         >
                           Approve
                         </button>
@@ -558,6 +577,13 @@ export default function ChatRoom() {
                     </div>
                   ))}
                 </div>
+                {users.guest && (
+                  <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded-lg">
+                    <p className="text-xs text-yellow-700">
+                      💡 Kick the current guest to approve pending requests
+                    </p>
+                  </div>
+                )}
               </div>
             )}
           </div>

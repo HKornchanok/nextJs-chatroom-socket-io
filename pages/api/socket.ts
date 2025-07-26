@@ -49,19 +49,21 @@ class ChatRoom {
   }
 
   addGuest(user: User): 'approved' | 'pending' | 'full' {
-    if (this.guest) {
-      return 'full'
-    }
-    
     // Add timestamp when guest is added to pending list
     user.joinedAt = new Date()
 
-    // Add to pending list if admin is present
-    this.pendingGuests.push(user)
-    return 'pending'
+      this.pendingGuests.push(user)
+      return 'pending'
+    
+  
   }
 
   approveGuest(guestId: string): boolean {
+    // Check if there's already a guest in the room
+    if (this.guest) {
+      return false // Cannot approve when room is full
+    }
+    
     const pendingIndex = this.pendingGuests.findIndex(g => g.id === guestId)
     if (pendingIndex === -1) return false
     
@@ -307,7 +309,7 @@ const ioHandler = (req: NextApiRequest, res: NextApiResponse) => {
               success: true, 
               userType: 'admin',
               users: users,
-              messages: chatRoom.getMessages()
+              messages: [] // Don't send previous messages to new users
             })
             socket.broadcast.emit('userJoined', { user, type: 'admin' })
             
@@ -321,6 +323,9 @@ const ioHandler = (req: NextApiRequest, res: NextApiResponse) => {
                 type: 'system'
               })
             }
+            
+            // Emit pending guest count
+            io.emit('pendingGuestCount', { count: users.pendingGuests.length })
           } else {
             socket.emit('joined', { success: false, error: 'Invalid admin password' })
           }
@@ -332,9 +337,13 @@ const ioHandler = (req: NextApiRequest, res: NextApiResponse) => {
               success: true, 
               userType: 'guest',
               users: chatRoom.getUsers(),
-              messages: chatRoom.getMessages()
+              messages: [] // Don't send previous messages to new users
             })
             socket.broadcast.emit('userJoined', { user, type: 'guest' })
+            
+            // Emit updated pending guest count
+            const users = chatRoom.getUsers()
+            io.emit('pendingGuestCount', { count: users.pendingGuests.length })
           } else if (result === 'pending') {
             socket.emit('joined', { 
               success: true, 
@@ -342,6 +351,10 @@ const ioHandler = (req: NextApiRequest, res: NextApiResponse) => {
               users: chatRoom.getUsers()
             })
             socket.broadcast.emit('guestRequest', { user })
+            
+            // Emit updated pending guest count
+            const users = chatRoom.getUsers()
+            io.emit('pendingGuestCount', { count: users.pendingGuests.length })
           } else {
             socket.emit('joined', { success: false, error: 'Room is full' })
           }
@@ -421,7 +434,7 @@ const ioHandler = (req: NextApiRequest, res: NextApiResponse) => {
         if (chatRoom.isUserInRoom(socket.id)) {
           socket.emit('roomState', {
             users: chatRoom.getUsers(),
-            messages: chatRoom.getMessages()
+            messages: [] // Don't send previous messages to new users
           })
         }
       })
@@ -452,6 +465,22 @@ const ioHandler = (req: NextApiRequest, res: NextApiResponse) => {
                 type: 'system'
               })
             }
+            
+            // Emit updated pending guest count
+            const updatedUsers = chatRoom.getUsers()
+            io.emit('pendingGuestCount', { count: updatedUsers.pendingGuests.length })
+          } else {
+            // Room is full, cannot approve guest
+            const pendingGuest = users.pendingGuests.find(g => g.id === guestId)
+            if (pendingGuest) {
+              io.emit('newMessage', {
+                id: Date.now().toString(),
+                user: 'System',
+                message: `Cannot approve ${pendingGuest.name} - room is full. Please kick the current guest first.`,
+                timestamp: new Date(),
+                type: 'system'
+              })
+            }
           }
         }
       })
@@ -475,6 +504,10 @@ const ioHandler = (req: NextApiRequest, res: NextApiResponse) => {
                 timestamp: new Date(),
                 type: 'system'
               })
+              
+              // Emit updated pending guest count
+              const updatedUsers = chatRoom.getUsers()
+              io.emit('pendingGuestCount', { count: updatedUsers.pendingGuests.length })
             }
           }
         }
@@ -501,7 +534,31 @@ const ioHandler = (req: NextApiRequest, res: NextApiResponse) => {
 
       // Cancel request (for pending guests)
       socket.on('cancelRequest', () => {
+        const users = chatRoom.getUsers()
+        // Find the pending guest before removing them
+        const cancelingGuest = users.pendingGuests.find(g => g.id === socket.id)
+        
         const userType = chatRoom.removeUser(socket.id)
+        if (userType === 'pending' && cancelingGuest) {
+          // Emit userLeft event to notify admin that the pending guest has left
+          io.emit('userLeft', { userId: socket.id, userType: 'pending' })
+          
+          // Emit system message about the cancellation
+          io.emit('newMessage', {
+            id: Date.now().toString(),
+            user: 'System',
+            message: `${cancelingGuest.name} has cancelled their request`,
+            timestamp: new Date(),
+            type: 'system'
+          })
+          
+          // Emit updated pending guest count
+          const updatedUsers = chatRoom.getUsers()
+          io.emit('pendingGuestCount', { count: updatedUsers.pendingGuests.length })
+          
+          // Emit user activity update to sync admin's view
+          io.emit('userActivityUpdate', { users: updatedUsers })
+        }
       })
 
       // Disconnect
@@ -518,6 +575,15 @@ const ioHandler = (req: NextApiRequest, res: NextApiResponse) => {
               timestamp: new Date(),
               type: 'system'
             })
+          }
+          
+          // Emit updated pending guest count if a pending guest disconnected
+          if (userType === 'pending') {
+            io.emit('pendingGuestCount', { count: users.pendingGuests.length })
+            // Emit user activity update to sync admin's view
+            io.emit('userActivityUpdate', { users: users })
+            // Note: We don't emit a system message here because we don't know the guest's name
+            // The cancelRequest event already handles the system message for intentional cancellations
           }
         }
       })
