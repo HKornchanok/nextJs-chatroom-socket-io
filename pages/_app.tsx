@@ -30,9 +30,10 @@ export default function App({ Component, pageProps }: AppProps) {
   useEffect(() => {
     console.log('Initializing Socket.IO connection...')
     
-    // Create socket instance with Vercel-compatible configuration
+    // Create socket instance with Railway-optimized configuration
     const socketInstance = io({
       path: '/api/socket',
+      // Use both polling and WebSocket for Railway (full support)
       transports: ['polling', 'websocket'],
       timeout: 20000,
       forceNew: true,
@@ -71,6 +72,10 @@ export default function App({ Component, pageProps }: AppProps) {
 
     socketInstance.on('reconnect_error', (error) => {
       console.error('❌ Reconnection error:', error)
+    })
+
+    socketInstance.on('reconnect_failed', () => {
+      console.error('❌ Reconnection failed after all attempts')
     })
 
     setSocket(socketInstance)

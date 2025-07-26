@@ -124,10 +124,12 @@ This guide will help you deploy the real-time chat application to Vercel.
 
 ### Common Issues
 
-1. **Socket Connection Fails**
+1. **Socket Connection Fails (WebSocket/XHR Poll Error)**
+   - **Solution**: The app now uses polling as the primary transport for Vercel compatibility
    - Check that `NEXT_PUBLIC_SITE_URL` is set correctly
    - Verify CORS settings in `vercel.json`
    - Check browser console for connection errors
+   - **Test Connection**: Visit `/test-connection` to debug connection issues
 
 2. **Admin Login Doesn't Work**
    - Verify `ADMIN_PASSWORD` environment variable is set
@@ -137,6 +139,13 @@ This guide will help you deploy the real-time chat application to Vercel.
    - Check Socket.IO connection status
    - Verify server logs in Vercel dashboard
    - Test with different browsers/devices
+
+### Connection Debugging
+
+1. **Use the Test Page**: Visit `https://your-app.vercel.app/test-connection` to test Socket.IO connection
+2. **Check Browser Console**: Look for Socket.IO connection messages
+3. **Verify Environment Variables**: Ensure `NEXT_PUBLIC_SITE_URL` is set to your Vercel URL
+4. **Check Vercel Logs**: Go to Functions tab in Vercel dashboard to see server logs
 
 ### Debugging
 

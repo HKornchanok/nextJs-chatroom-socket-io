@@ -54,28 +54,29 @@ The application uses WebSocket connections through Socket.IO, which means:
 
 This application is designed to work across different PCs when deployed. 
 
-### Quick Deploy to Vercel (Recommended)
+### Quick Deploy to Railway (Recommended)
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/your-username/real-time-chat)
+[![Deploy on Railway](https://railway.app/button.svg)](https://railway.app/template/new?template=https://github.com/your-username/real-time-chat)
 
 1. **Fork this repository** to your GitHub account
-2. **Click the "Deploy with Vercel" button** above
+2. **Click the "Deploy on Railway" button** above
 3. **Set environment variables**:
    - `ADMIN_PASSWORD`: Your admin password
-   - `NEXT_PUBLIC_SITE_URL`: Your Vercel deployment URL
+   - `NEXT_PUBLIC_SITE_URL`: Your Railway deployment URL
+   - `NODE_ENV`: `production`
 4. **Deploy** and enjoy!
 
-For detailed Vercel deployment instructions, see [VERCEL_DEPLOYMENT.md](./VERCEL_DEPLOYMENT.md).
+For detailed Railway deployment instructions, see [RAILWAY_DEPLOYMENT.md](./RAILWAY_DEPLOYMENT.md).
 
 ### Other Deployment Options
 
 See [DEPLOYMENT.md](./DEPLOYMENT.md) for detailed deployment instructions for other platforms.
 
 ### Supported Platforms
-- **Vercel** (Recommended) - [Deployment Guide](./VERCEL_DEPLOYMENT.md)
-- **Railway** - Good for WebSocket applications
+- **Railway** (Recommended) - [Deployment Guide](./RAILWAY_DEPLOYMENT.md) - Best for Socket.IO
+- **Vercel** - [Deployment Guide](./VERCEL_DEPLOYMENT.md) - Limited WebSocket support
 - **Render** - Good for real-time applications
-- **Netlify**
+- **DigitalOcean App Platform** - Full control
 - **Self-hosted servers**
 - **Any platform supporting Node.js and WebSockets**
 
@@ -88,7 +89,7 @@ See [DEPLOYMENT.md](./DEPLOYMENT.md) for detailed deployment instructions for ot
 
 ## Testing Cross-PC Communication
 
-1. Deploy the application to a hosting service
+1. Deploy the application to a hosting service (Railway recommended)
 2. Open the app on different devices/PCs
 3. Test admin login and guest approval
 4. Verify real-time messaging works across all devices
