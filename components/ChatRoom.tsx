@@ -35,6 +35,7 @@ export default function ChatRoom() {
   const [typingUsers, setTypingUsers] = useState<Set<string>>(new Set())
   const [currentTime, setCurrentTime] = useState(new Date())
   const [showKickedModal, setShowKickedModal] = useState(false)
+  const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>('default')
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
@@ -45,6 +46,49 @@ export default function ChatRoom() {
   useEffect(() => {
     scrollToBottom()
   }, [messages])
+
+  // Request notification permission for admins
+  useEffect(() => {
+    if (userType === 'admin' && 'Notification' in window) {
+      setNotificationPermission(Notification.permission)
+      
+      if (Notification.permission === 'default') {
+        Notification.requestPermission().then((permission) => {
+          setNotificationPermission(permission)
+        })
+      }
+    }
+  }, [userType])
+
+  // Function to send web notification
+  const sendNotification = (title: string, body: string, icon?: string) => {
+    console.log('sending notification', userType, Notification.permission)
+    if (userType !== 'admin'  || Notification.permission !== 'granted') {
+      return
+    }
+
+    // Don't send notifications if the page is currently focused
+    if (document.hasFocus()) {
+      return
+    }
+
+    const notification = new Notification(title, {
+      body,
+      tag: 'chat-admin', // This prevents multiple notifications from stacking
+      requireInteraction: true, // Keeps notification visible until user interacts
+    })
+
+    // Auto-close notification after 5 seconds
+    setTimeout(() => {
+      notification.close()
+    }, 5000)
+
+    // Focus window when notification is clicked
+    notification.onclick = () => {
+      window.focus()
+      notification.close()
+    }
+  }
 
   // Update current time every second for activity tracking
   useEffect(() => {
@@ -65,7 +109,6 @@ export default function ChatRoom() {
     if (!socket) return
     socket.emit('typingStop')
   }
-
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setNewMessage(e.target.value)
@@ -124,6 +167,13 @@ export default function ChatRoom() {
         if (data.type === 'admin') {
           return { ...prev, admin: userWithDates }
         } else if (data.type === 'guest') {
+          // Send notification when guest joins
+          if (userType === 'admin') {
+            sendNotification(
+              '👤 Guest Joined',
+              `${userWithDates.name} has joined the chat room`
+            )
+          }
           return { ...prev, guest: userWithDates }
         }
         return prev
@@ -131,7 +181,16 @@ export default function ChatRoom() {
     })
 
     // Listen for user left events
-    socket.on('userLeft', (data: { userId: string; userType: string }) => {
+    socket.on('userLeft', (data: { userId: string; userType: string; userName?: string }) => {
+      // Send notification when guest leaves
+      if (data.userType === 'guest' && userType === 'admin') {
+        const guestName = data.userName || users.guest?.name || 'Guest'
+        sendNotification(
+          '👋 Guest Left',
+          `${guestName} has left the chat room`
+        )
+      }
+
       setUsers(prev => {
         if (data.userType === 'admin') {
           return { ...prev, admin: null }
@@ -161,7 +220,20 @@ export default function ChatRoom() {
         lastActivity: data.user.lastActivity ? new Date(data.user.lastActivity) : undefined,
         sessionStartTime: data.user.sessionStartTime ? new Date(data.user.sessionStartTime) : undefined
       }
-      setPendingGuests(prev => [...prev, userWithDates])
+      
+      setPendingGuests(prev => {
+        const newGuests = [...prev, userWithDates]
+        
+        // Send notification for new guest request
+        if (userType === 'admin') {
+          sendNotification(
+            '🔔 New Guest Request',
+            `${userWithDates.name} wants to join the chat room`,
+          )
+        }
+        
+        return newGuests
+      })
     })
 
     // Request current room state when joining
@@ -247,7 +319,7 @@ export default function ChatRoom() {
       socket.off('userActivityUpdate')
       socket.off('kicked')
     }
-  }, [socket])
+  }, [socket, userType, users.guest])
 
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault()
@@ -293,21 +365,51 @@ export default function ChatRoom() {
 
   const handleApproveGuest = (guestId: string) => {
     if (!socket) return
+    
+    const guest = pendingGuests.find(g => g.id === guestId)
     socket.emit('approveGuest', guestId)
     setPendingGuests(prev => prev.filter(g => g.id !== guestId))
+    
+    // Send notification when guest is approved
+    if (guest && userType === 'admin') {
+      sendNotification(
+        '✅ Guest Approved',
+        `${guest.name} has been approved and joined the chat`
+      )
+    }
   }
 
   const handleRejectGuest = (guestId: string) => {
     if (!socket) {
       return
     }
+    
+    const guest = pendingGuests.find(g => g.id === guestId)
     socket.emit('rejectGuest', guestId)
     setPendingGuests(prev => prev.filter(g => g.id !== guestId))
+    
+    // Send notification when guest is rejected
+    if (guest && userType === 'admin') {
+      sendNotification(
+        '❌ Guest Rejected',
+        `${guest.name}'s request has been rejected`
+      )
+    }
   }
 
   const handleKickGuest = () => {
     if (!socket) return
+    
+    const guestName = users.guest?.name || 'Guest'
     socket.emit('kickGuest')
+    
+    // Send notification when guest is kicked
+    if (userType === 'admin') {
+      sendNotification(
+        '🚫 Guest Kicked',
+        `${guestName} has been kicked from the chat room`
+      )
+    }
   }
 
   const handleLeaveChat = () => {
@@ -319,6 +421,14 @@ export default function ChatRoom() {
 
   const formatTime = (date: Date) => {
     return new Date(date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  }
+
+  const requestNotificationPermission = () => {
+    console.log('requesting notification permission')
+      Notification.requestPermission().then((permission) => {
+        console.log('notification permission', permission)
+        setNotificationPermission(permission)
+      })
   }
 
   return (
@@ -334,6 +444,29 @@ export default function ChatRoom() {
               </p>
             </div>
             <div className="flex items-center space-x-4">
+              {/* Notification Status for Admins */}
+              {userType === 'admin' && (
+                <div className="flex items-center space-x-2">
+                  {notificationPermission === 'granted' ? (
+                    <div className="flex items-center text-sm text-green-600">
+                      <span className="inline-block w-2 h-2 bg-green-500 rounded-full mr-2"></span>
+                      Notifications On
+                    </div>
+                  ) : notificationPermission === 'denied' ? (
+                    <div className="flex items-center text-sm text-red-600">
+                      <span className="inline-block w-2 h-2 bg-red-500 rounded-full mr-2"></span>
+                      Notifications Blocked
+                    </div>
+                  ) : (
+                    <button
+                      onClick={requestNotificationPermission}
+                      className="px-3 py-1 text-xs bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+                    >
+                      Enable Notifications
+                    </button>
+                  )}
+                </div>
+              )}
               <div className="text-sm text-gray-600">
                 <span className="inline-block w-2 h-2 bg-green-500 rounded-full mr-2"></span>
                 Connected
@@ -433,6 +566,26 @@ export default function ChatRoom() {
         {userType === 'admin' && (
           <div className="w-80 bg-white border-l border-gray-200 p-4">
             <h3 className="font-semibold text-gray-800 mb-4">Admin Controls</h3>
+            
+            {/* Notification Settings */}
+            {notificationPermission !== 'granted' && (
+              <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="text-sm font-medium text-blue-800">🔔 Notifications</h4>
+                    <p className="text-xs text-blue-600 mt-1">
+                      Enable notifications to get alerted about guest activity
+                    </p>
+                  </div>
+                  <button
+                    onClick={requestNotificationPermission}
+                    className="px-3 py-1 text-xs bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+                  >
+                    Enable
+                  </button>
+                </div>
+              </div>
+            )}
             
             {/* Current Users */}
             <div className="mb-6">
@@ -535,7 +688,14 @@ export default function ChatRoom() {
             {pendingGuests.length > 0 && (
               <div className="mb-6">
                 <div className="flex items-center justify-between mb-2">
-                  <h4 className="text-sm font-medium text-gray-700">Pending Requests</h4>
+                  <h4 className="text-sm font-medium text-gray-700">
+                    Pending Requests
+                    {pendingGuests.length > 0 && (
+                      <span className="ml-2 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white bg-red-500 rounded-full">
+                        {pendingGuests.length}
+                      </span>
+                    )}
+                  </h4>
                   {users.guest && (
                     <span className="text-xs text-red-600 bg-red-50 px-2 py-1 rounded-full">
                       Room Full
@@ -621,4 +781,4 @@ export default function ChatRoom() {
       )}
     </div>
   )
-} 
+}
