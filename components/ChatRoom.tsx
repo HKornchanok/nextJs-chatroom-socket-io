@@ -62,7 +62,6 @@ export default function ChatRoom() {
 
   // Function to send web notification
   const sendNotification = (title: string, body: string, icon?: string) => {
-    console.log('sending notification', userType, Notification.permission)
     if (userType !== 'admin'  || Notification.permission !== 'granted') {
       return
     }
@@ -424,9 +423,7 @@ export default function ChatRoom() {
   }
 
   const requestNotificationPermission = () => {
-    console.log('requesting notification permission')
       Notification.requestPermission().then((permission) => {
-        console.log('notification permission', permission)
         setNotificationPermission(permission)
       })
   }
