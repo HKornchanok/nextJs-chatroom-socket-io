@@ -7,49 +7,55 @@ export default function Home() {
   const { userType, socket, isConnected, setUserType, setUserName } = useContext(ChatContext)
   const [isLoading, setIsLoading] = useState(false)
   const [waitingTime, setWaitingTime] = useState(0)
+  const [showRejectedModal, setShowRejectedModal] = useState(false)
 
   useEffect(() => {
     if (!socket) return
 
     // Listen for approved event (for guests)
     const handleApproved = (data: { userName: string }) => {
-      console.log('Guest approved! Redirecting to chat room...', data)
       setUserType('guest')
       setUserName(data.userName)
     }
 
     // Listen for kicked event (for guests)
     const handleKicked = () => {
-      console.log('Guest kicked! Redirecting to login...')
-      setUserType(null)
+      // Don't immediately set userType to null - let ChatRoom handle the kicked event
+      // The ChatRoom component will show a modal and handle the redirect
     }
 
     // Listen for rejected event (for guests)
     const handleRejected = () => {
-      console.log('Guest rejected! Redirecting to login...')
-      setUserType(null)
-      setUserName('') // Clear the username as well
+      setShowRejectedModal(true)
     }
 
     // Add debugging for all socket events
     socket.on('connect', () => {
-      console.log('Socket connected with ID:', socket.id)
+      // Socket connected
     })
 
     socket.on('disconnect', () => {
-      console.log('Socket disconnected')
+      // Socket disconnected
     })
 
     socket.on('approved', handleApproved)
     socket.on('kicked', handleKicked)
     socket.on('rejected', handleRejected)
 
+    // Add a general event listener for debugging
+    const originalEmit = socket.emit
+    socket.emit = function(event: string, ...args: any[]) {
+      return originalEmit.apply(this, [event, ...args])
+    }
+
     return () => {
       socket.off('approved', handleApproved)
       socket.off('kicked', handleKicked)
       socket.off('rejected', handleRejected)
+      // Restore original emit
+      socket.emit = originalEmit
     }
-  }, [socket, setUserType, setUserName])
+  }, [socket, setUserType, setUserName, userType])
 
   // Add timeout for pending users
   useEffect(() => {
@@ -59,7 +65,6 @@ export default function Home() {
           const newTime = prev + 1
           // Auto-redirect after 5 minutes (300 seconds)
           if (newTime >= 300) {
-            console.log('Auto-redirecting due to timeout')
             setUserType(null)
             setUserName('')
             return 0
@@ -145,6 +150,35 @@ export default function Home() {
             </button>
           </div>
         </div>
+
+        {/* Rejected Modal */}
+        {showRejectedModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 shadow-xl">
+              <div className="text-center">
+                <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 mb-4">
+                  <svg className="h-6 w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </div>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">Request Rejected</h3>
+                <p className="text-sm text-gray-500 mb-6">
+                  Your request to join the chat has been rejected by the admin. You can try again later.
+                </p>
+                <button
+                  onClick={() => {
+                    setShowRejectedModal(false)
+                    setUserType(null)
+                    setUserName('')
+                  }}
+                  className="w-full px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium"
+                >
+                  Return to Login
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     )
   }

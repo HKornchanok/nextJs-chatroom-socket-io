@@ -14,6 +14,10 @@ interface User {
   name: string
   type: 'admin' | 'guest'
   socketId: string
+  joinedAt?: Date
+  lastActivity?: Date
+  sessionStartTime?: Date
+  sessionWarningSent?: boolean
 }
 
 interface ChatMessage {
@@ -35,8 +39,13 @@ class ChatRoom {
     if (password && password !== this.adminPassword) {
       return false
     }
+    // Add timestamp when admin joins
+    user.joinedAt = new Date()
+    user.lastActivity = new Date()
+    // If there's already an admin, kick them out
+    const previousAdmin = this.admin
     this.admin = user
-    return true
+    return { success: true, previousAdmin }
   }
 
   addGuest(user: User): 'approved' | 'pending' | 'full' {
@@ -44,6 +53,8 @@ class ChatRoom {
       return 'full'
     }
     
+    // Add timestamp when guest is added to pending list
+    user.joinedAt = new Date()
 
     // Add to pending list if admin is present
     this.pendingGuests.push(user)
@@ -55,6 +66,10 @@ class ChatRoom {
     if (pendingIndex === -1) return false
     
     const guest = this.pendingGuests.splice(pendingIndex, 1)[0]
+    // Update timestamp when guest is approved and joins
+    guest.joinedAt = new Date()
+    guest.lastActivity = new Date()
+    guest.sessionStartTime = new Date() // Start session timer
     this.guest = guest
     return true
   }
@@ -115,22 +130,64 @@ class ChatRoom {
   isUserInRoom(userId: string): boolean {
     return !!(this.admin?.id === userId || this.guest?.id === userId)
   }
+
+  updateUserActivity(userId: string): void {
+    if (this.admin?.id === userId) {
+      this.admin.lastActivity = new Date()
+    }
+    if (this.guest?.id === userId) {
+      this.guest.lastActivity = new Date()
+    }
+  }
+
+  checkInactiveGuests(): string[] {
+    const now = new Date()
+    const inactiveGuests: string[] = []
+    
+    if (this.guest && this.guest.lastActivity) {
+      const timeDiff = now.getTime() - this.guest.lastActivity.getTime()
+      if (timeDiff > 90000) { // 90 seconds in milliseconds
+        inactiveGuests.push(this.guest.id)
+      }
+    }
+    
+    return inactiveGuests
+  }
+
+  checkSessionTimeouts(): string[] {
+    const now = new Date()
+    const expiredSessions: string[] = []
+    
+    if (this.guest && this.guest.sessionStartTime) {
+      const sessionTime = now.getTime() - this.guest.sessionStartTime.getTime()
+      if (sessionTime > 300000) { // 300 seconds (5 minutes) in milliseconds
+        expiredSessions.push(this.guest.id)
+      }
+    }
+    
+    return expiredSessions
+  }
+
+  shouldWarnSessionExpiry(): boolean {
+    if (this.guest && this.guest.sessionStartTime) {
+      const sessionTime = new Date().getTime() - this.guest.sessionStartTime.getTime()
+      return sessionTime > 240000 && sessionTime <= 300000 // Between 4-5 minutes
+    }
+    return false
+  }
 }
 
 const chatRoom = new ChatRoom()
 
 const ioHandler = (req: NextApiRequest, res: NextApiResponse) => {
-  console.log('Socket API endpoint called')
-  
   if (!(res.socket as any).server.io) {
-    console.log('Creating new Socket.IO server instance')
     const httpServer: NetServer = (res.socket as any).server as any
     const io = new ServerIO(httpServer, {
       path: '/api/socket',
       addTrailingSlash: false,
       cors: {
         origin: process.env.NODE_ENV === 'production' 
-          ? [process.env.NEXT_PUBLIC_SITE_URL || '*', 'https://*.railway.app']
+          ? [process.env.NEXT_PUBLIC_SITE_URL || '*', 'https://*.railway.app', 'https://*.render.com', 'https://*.digitalocean.app']
           : '*',
         methods: ['GET', 'POST', 'OPTIONS'],
         credentials: true,
@@ -146,13 +203,80 @@ const ioHandler = (req: NextApiRequest, res: NextApiResponse) => {
     })
     ;(res.socket as any).server.io = io
 
-    io.on('connection', (socket) => {
-      console.log('User connected:', socket.id)
+    // Set up periodic check for inactive guests and session timeouts (every 30 seconds)
+    const inactivityCheckInterval = setInterval(() => {
+      const inactiveGuests = chatRoom.checkInactiveGuests()
+      const expiredSessions = chatRoom.checkSessionTimeouts()
+      
+      // Handle inactive guests
+      inactiveGuests.forEach(guestId => {
+        const users = chatRoom.getUsers()
+        const guest = users.guest
+        
+        if (guest && guest.id === guestId) {
+          // Kick the inactive guest
+          const success = chatRoom.kickGuest()
+          if (success) {
+            io.to(guest.socketId).emit('kicked', { reason: 'Inactive for 90 seconds' })
+            io.emit('userLeft', { userId: guest.id, userType: 'guest' })
+            io.emit('newMessage', {
+              id: Date.now().toString(),
+              user: 'System',
+              message: `${guest.name} has been kicked due to inactivity`,
+              timestamp: new Date(),
+              type: 'system'
+            })
+          }
+        }
+      })
+      
+      // Handle session warnings (1 minute remaining)
+      const users = chatRoom.getUsers()
+      if (users.guest && chatRoom.shouldWarnSessionExpiry() && !users.guest.sessionWarningSent) {
+        users.guest.sessionWarningSent = true
+        io.to(users.guest.socketId).emit('newMessage', {
+          id: Date.now().toString(),
+          user: 'System',
+          message: '⚠️ Warning: Your session will expire in 1 minute!',
+          timestamp: new Date(),
+          type: 'system'
+        })
+      }
+      
+      // Handle expired sessions
+      expiredSessions.forEach(guestId => {
+        const users = chatRoom.getUsers()
+        const guest = users.guest
+        
+        if (guest && guest.id === guestId) {
+          // Kick the guest due to session timeout
+          const success = chatRoom.kickGuest()
+          if (success) {
+            io.to(guest.socketId).emit('kicked', { reason: 'Session expired (5 minutes)' })
+            io.emit('userLeft', { userId: guest.id, userType: 'guest' })
+            io.emit('newMessage', {
+              id: Date.now().toString(),
+              user: 'System',
+              message: `${guest.name}'s session has expired (5 minutes)`,
+              timestamp: new Date(),
+              type: 'system'
+            })
+          }
+        }
+      })
+    }, 30000) // Check every 30 seconds
 
+    // Clean up interval when server shuts down
+    process.on('SIGTERM', () => {
+      clearInterval(inactivityCheckInterval)
+    })
+    process.on('SIGINT', () => {
+      clearInterval(inactivityCheckInterval)
+    })
+
+    io.on('connection', (socket) => {
       // Join room
       socket.on('join', (data: { name: string; type: 'admin' | 'guest'; password?: string }) => {
-        console.log('Join request received:', { socketId: socket.id, ...data })
-        
         const user: User = {
           id: socket.id,
           name: data.name,
@@ -161,13 +285,24 @@ const ioHandler = (req: NextApiRequest, res: NextApiResponse) => {
         }
 
         if (data.type === 'admin') {
-          console.log('Processing admin join request')
-          const success = chatRoom.addAdmin(user, data.password)
-          console.log('Admin join result:', success)
+          const result = chatRoom.addAdmin(user, data.password)
           
-          if (success) {
+          if (result && result.success) {
             const users = chatRoom.getUsers()
-            console.log('Emitting joined event for admin')
+            
+            // If there was a previous admin, kick them
+            if (result.previousAdmin) {
+              io.to(result.previousAdmin.socketId).emit('kicked', { reason: 'Another admin has joined' })
+              io.emit('userLeft', { userId: result.previousAdmin.id, userType: 'admin' })
+              io.emit('newMessage', {
+                id: Date.now().toString(),
+                user: 'System',
+                message: `${result.previousAdmin.name} has been kicked because another admin joined`,
+                timestamp: new Date(),
+                type: 'system'
+              })
+            }
+            
             socket.emit('joined', { 
               success: true, 
               userType: 'admin',
@@ -187,16 +322,12 @@ const ioHandler = (req: NextApiRequest, res: NextApiResponse) => {
               })
             }
           } else {
-            console.log('Admin join failed - invalid password or admin exists')
-            socket.emit('joined', { success: false, error: 'Invalid admin password or admin already exists' })
+            socket.emit('joined', { success: false, error: 'Invalid admin password' })
           }
         } else {
-          console.log('Processing guest join request')
           const result = chatRoom.addGuest(user)
-          console.log('Guest join result:', result)
           
           if (result === 'approved') {
-            console.log('Emitting joined event for approved guest')
             socket.emit('joined', { 
               success: true, 
               userType: 'guest',
@@ -205,7 +336,6 @@ const ioHandler = (req: NextApiRequest, res: NextApiResponse) => {
             })
             socket.broadcast.emit('userJoined', { user, type: 'guest' })
           } else if (result === 'pending') {
-            console.log('Emitting joined event for pending guest')
             socket.emit('joined', { 
               success: true, 
               userType: 'pending',
@@ -213,7 +343,6 @@ const ioHandler = (req: NextApiRequest, res: NextApiResponse) => {
             })
             socket.broadcast.emit('guestRequest', { user })
           } else {
-            console.log('Guest join failed - room is full')
             socket.emit('joined', { success: false, error: 'Room is full' })
           }
         }
@@ -226,6 +355,9 @@ const ioHandler = (req: NextApiRequest, res: NextApiResponse) => {
                     users.guest?.id === socket.id ? users.guest : null
         
         if (user && chatRoom.isUserInRoom(socket.id)) {
+          // Update user activity
+          chatRoom.updateUserActivity(socket.id)
+          
           const chatMessage: ChatMessage = {
             id: Date.now().toString(),
             user: user.name,
@@ -236,6 +368,10 @@ const ioHandler = (req: NextApiRequest, res: NextApiResponse) => {
           
           chatRoom.addMessage(chatMessage)
           io.emit('newMessage', chatMessage)
+          
+          // Emit user activity update
+          const updatedUsers = chatRoom.getUsers()
+          io.emit('userActivityUpdate', { users: updatedUsers })
         }
       })
 
@@ -246,11 +382,18 @@ const ioHandler = (req: NextApiRequest, res: NextApiResponse) => {
                     users.guest?.id === socket.id ? users.guest : null
         
         if (user && chatRoom.isUserInRoom(socket.id)) {
+          // Update user activity
+          chatRoom.updateUserActivity(socket.id)
+          
           socket.broadcast.emit('userTyping', { 
             userId: user.id, 
             userName: user.name,
             userType: user.type 
           })
+          
+          // Emit user activity update
+          const updatedUsers = chatRoom.getUsers()
+          io.emit('userActivityUpdate', { users: updatedUsers })
         }
       })
 
@@ -260,9 +403,16 @@ const ioHandler = (req: NextApiRequest, res: NextApiResponse) => {
                     users.guest?.id === socket.id ? users.guest : null
         
         if (user && chatRoom.isUserInRoom(socket.id)) {
+          // Update user activity
+          chatRoom.updateUserActivity(socket.id)
+          
           socket.broadcast.emit('userStoppedTyping', { 
             userId: user.id 
           })
+          
+          // Emit user activity update
+          const updatedUsers = chatRoom.getUsers()
+          io.emit('userActivityUpdate', { users: updatedUsers })
         }
       })
 
@@ -284,13 +434,20 @@ const ioHandler = (req: NextApiRequest, res: NextApiResponse) => {
           if (success) {
             const guest = chatRoom.getUsers().guest
             if (guest) {
-              console.log(`Approving guest: ${guest.name} (${guest.socketId})`)
               io.to(guest.socketId).emit('approved', { userName: guest.name })
               io.emit('userJoined', { user: guest, type: 'guest' })
               io.emit('newMessage', {
                 id: Date.now().toString(),
                 user: 'System',
                 message: `${guest.name} has been approved to join the chat`,
+                timestamp: new Date(),
+                type: 'system'
+              })
+              // Send session limit message to the guest
+              io.to(guest.socketId).emit('newMessage', {
+                id: Date.now().toString(),
+                user: 'System',
+                message: 'Your session will expire in 5 minutes. Make the most of your time!',
                 timestamp: new Date(),
                 type: 'system'
               })
@@ -305,12 +462,10 @@ const ioHandler = (req: NextApiRequest, res: NextApiResponse) => {
           // Find the guest before rejecting them
           const rejectedGuest = users.pendingGuests.find(g => g.id === guestId)
           if (rejectedGuest) {
-            console.log(`Rejecting guest: ${rejectedGuest.name} (${rejectedGuest.socketId})`)
             const success = chatRoom.rejectGuest(guestId)
             if (success) {
               // Emit to the specific guest
               io.to(rejectedGuest.socketId).emit('rejected')
-              console.log(`Rejected event sent to socket: ${rejectedGuest.socketId}`)
               
               // Also emit to all clients for the system message
               io.emit('newMessage', {
@@ -321,8 +476,6 @@ const ioHandler = (req: NextApiRequest, res: NextApiResponse) => {
                 type: 'system'
               })
             }
-          } else {
-            console.log(`Guest with ID ${guestId} not found in pending list`)
           }
         }
       })
@@ -349,9 +502,6 @@ const ioHandler = (req: NextApiRequest, res: NextApiResponse) => {
       // Cancel request (for pending guests)
       socket.on('cancelRequest', () => {
         const userType = chatRoom.removeUser(socket.id)
-        if (userType === 'pending') {
-          console.log('Guest cancelled their request:', socket.id)
-        }
       })
 
       // Disconnect
@@ -370,7 +520,6 @@ const ioHandler = (req: NextApiRequest, res: NextApiResponse) => {
             })
           }
         }
-        console.log('User disconnected:', socket.id)
       })
     })
   }
