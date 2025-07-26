@@ -1,156 +1,77 @@
 # Real-Time Chat Application
 
-A real-time chat application built with Next.js and Socket.IO featuring admin and guest user roles with approval functionality.
+A real-time chat application built with Next.js and Socket.IO that supports admin-guest communication with approval system.
 
 ## Features
 
-- **Real-time messaging** using Socket.IO
-- **Two user types**: Admin and Guest
-- **Admin controls**: Can approve or kick guests
-- **Guest approval system**: Guests must be approved by admin to join
-- **Single guest limit**: Only one guest allowed in the chat room at a time
-- **Modern UI**: Built with Tailwind CSS
-- **Responsive design**: Works on desktop and mobile devices
+- **Real-time messaging** with Socket.IO
+- **Admin-Guest system** with approval workflow
+- **Typing indicators** to show when users are typing
+- **Admin controls** - approve/reject guests, kick users
+- **Cross-platform** - works across different PCs and devices
+- **Responsive design** with Tailwind CSS
 
-## User Types
+## How It Works
 
-### Admin User
-- Always stays in the chat room
-- Can approve guest requests
-- Can kick guests out
-- Has full control over the chat room
-- Only one admin allowed at a time
+### Cross-PC Communication
+✅ **Yes, this works across different PCs!** 
 
-### Guest User
-- Must enter their name to request access
-- Needs admin approval to join the chat
-- Can be kicked by admin at any time
-- Only one guest allowed at a time
+The application uses WebSocket connections through Socket.IO, which means:
+- Users can connect from any device/PC with internet access
+- Real-time updates work instantly across all connected devices
+- Admin can control the chat from any location
+- Messages and user status sync in real-time
 
-## Getting Started
+### User Types
+1. **Admin**: Can approve/reject guests, kick users, send messages
+2. **Guest**: Must be approved by admin before joining the chat
+3. **Pending Guest**: Waiting for admin approval
 
-### Prerequisites
+## Quick Start
 
-- Node.js 18+ 
-- npm or yarn
+1. **Install dependencies**
+   ```bash
+   npm install
+   ```
 
-### Installation
+2. **Set up environment variables**
+   Create `.env.local` file:
+   ```env
+   NEXT_PUBLIC_SITE_URL=http://localhost:3000
+   ADMIN_PASSWORD=your-admin-password
+   ```
 
-1. Clone the repository:
-```bash
-git clone <repository-url>
-cd real-time-chat
-```
+3. **Run development server**
+   ```bash
+   npm run dev
+   ```
 
-2. Install dependencies:
-```bash
-npm install
-# or
-yarn install
-```
+4. **Open in browser**
+   - Visit `http://localhost:3000`
+   - Join as admin or guest
 
-3. Run the development server:
-```bash
-npm run dev
-# or
-yarn dev
-```
+## Deployment
 
-4. Open [http://localhost:3000](http://localhost:3000) in your browser.
+This application is designed to work across different PCs when deployed. See [DEPLOYMENT.md](./DEPLOYMENT.md) for detailed deployment instructions.
 
-## Usage
+### Supported Platforms
+- **Vercel** (Recommended)
+- **Netlify**
+- **Self-hosted servers**
+- **Any platform supporting Node.js and WebSockets**
 
-1. **First User (Admin)**:
-   - Enter your name
-   - Select "Admin" role
-   - Enter admin password (default: `admin123`)
-   - Click "Join Chat Room"
-   - You'll be automatically added as the admin
+## Technology Stack
 
-2. **Subsequent Users (Guests)**:
-   - Enter your name
-   - Select "Guest" role
-   - Click "Join Chat Room"
-   - Wait for admin approval
+- **Frontend**: Next.js, React, TypeScript
+- **Real-time**: Socket.IO
+- **Styling**: Tailwind CSS
+- **Deployment**: Works on any Node.js hosting platform
 
-3. **Admin Controls**:
-   - View pending guest requests in the sidebar
-   - Click "Approve" to let a guest join
-   - Click "Kick" to remove a guest from the chat
+## Testing Cross-PC Communication
 
-## Project Structure
+1. Deploy the application to a hosting service
+2. Open the app on different devices/PCs
+3. Test admin login and guest approval
+4. Verify real-time messaging works across all devices
 
-```
-real-time-chat/
-├── components/
-│   ├── ChatRoom.tsx      # Main chat interface
-│   └── LoginForm.tsx     # User login form
-├── pages/
-│   ├── api/
-│   │   └── socket.ts     # Socket.IO server
-│   ├── _app.tsx          # App wrapper with context
-│   └── index.tsx         # Main page
-├── styles/
-│   └── globals.css       # Global styles
-├── package.json
-├── tailwind.config.js
-├── postcss.config.js
-└── README.md
-```
-
-## Technologies Used
-
-- **Next.js 14** - React framework
-- **Socket.IO** - Real-time communication
-- **TypeScript** - Type safety
-- **Tailwind CSS** - Styling
-- **React Context** - State management
-
-## Configuration
-
-### Admin Password
-The default admin password is `admin123`. You can change it by setting the `ADMIN_PASSWORD` environment variable:
-
-```bash
-ADMIN_PASSWORD=your_secure_password npm run dev
-```
-
-## API Endpoints
-
-- `/api/socket` - WebSocket endpoint for real-time communication
-
-## Socket Events
-
-### Client to Server
-- `join` - Join the chat room
-- `sendMessage` - Send a message
-- `approveGuest` - Approve a guest (admin only)
-- `kickGuest` - Kick a guest (admin only)
-
-### Server to Client
-- `joined` - Confirmation of joining
-- `newMessage` - New message received
-- `userJoined` - User joined the chat
-- `userLeft` - User left the chat
-- `guestRequest` - New guest request (admin only)
-- `approved` - Guest approved (guest only)
-- `kicked` - Guest kicked (guest only)
-
-## Development
-
-### Building for Production
-
-```bash
-npm run build
-npm start
-```
-
-### Linting
-
-```bash
-npm run lint
-```
-
-## License
-
-This project is open source and available under the [MIT License](LICENSE). 
+The WebSocket connection ensures real-time communication regardless of the physical location of the users. 

@@ -1,6 +1,6 @@
 import { Server as NetServer } from 'http'
 import { NextApiRequest, NextApiResponse } from 'next'
-import { Server as ServerIO } from 'socket.io'
+import { Server as ServerIO, Socket } from 'socket.io'
 import { ADMIN_CONFIG } from '../../config/admin'
 
 export const config = {
@@ -44,7 +44,8 @@ class ChatRoom {
       return 'full'
     }
     
-    // Add to pending list
+
+    // Add to pending list if admin is present
     this.pendingGuests.push(user)
     return 'pending'
   }
@@ -119,19 +120,30 @@ class ChatRoom {
 const chatRoom = new ChatRoom()
 
 const ioHandler = (req: NextApiRequest, res: NextApiResponse) => {
-  if (!res.socket.server.io) {
-    const httpServer: NetServer = res.socket.server as any
+  console.log('Socket API endpoint called')
+  
+  if (!(res.socket as any).server.io) {
+    console.log('Creating new Socket.IO server instance')
+    const httpServer: NetServer = (res.socket as any).server as any
     const io = new ServerIO(httpServer, {
       path: '/api/socket',
       addTrailingSlash: false,
+      cors: {
+        origin: process.env.NODE_ENV === 'production' 
+          ? process.env.NEXT_PUBLIC_SITE_URL || '*' 
+          : '*',
+        methods: ['GET', 'POST']
+      }
     })
-    res.socket.server.io = io
+    ;(res.socket as any).server.io = io
 
     io.on('connection', (socket) => {
       console.log('User connected:', socket.id)
 
       // Join room
       socket.on('join', (data: { name: string; type: 'admin' | 'guest'; password?: string }) => {
+        console.log('Join request received:', { socketId: socket.id, ...data })
+        
         const user: User = {
           id: socket.id,
           name: data.name,
@@ -140,9 +152,13 @@ const ioHandler = (req: NextApiRequest, res: NextApiResponse) => {
         }
 
         if (data.type === 'admin') {
+          console.log('Processing admin join request')
           const success = chatRoom.addAdmin(user, data.password)
+          console.log('Admin join result:', success)
+          
           if (success) {
             const users = chatRoom.getUsers()
+            console.log('Emitting joined event for admin')
             socket.emit('joined', { 
               success: true, 
               userType: 'admin',
@@ -162,11 +178,16 @@ const ioHandler = (req: NextApiRequest, res: NextApiResponse) => {
               })
             }
           } else {
+            console.log('Admin join failed - invalid password or admin exists')
             socket.emit('joined', { success: false, error: 'Invalid admin password or admin already exists' })
           }
         } else {
+          console.log('Processing guest join request')
           const result = chatRoom.addGuest(user)
+          console.log('Guest join result:', result)
+          
           if (result === 'approved') {
+            console.log('Emitting joined event for approved guest')
             socket.emit('joined', { 
               success: true, 
               userType: 'guest',
@@ -175,6 +196,7 @@ const ioHandler = (req: NextApiRequest, res: NextApiResponse) => {
             })
             socket.broadcast.emit('userJoined', { user, type: 'guest' })
           } else if (result === 'pending') {
+            console.log('Emitting joined event for pending guest')
             socket.emit('joined', { 
               success: true, 
               userType: 'pending',
@@ -182,6 +204,7 @@ const ioHandler = (req: NextApiRequest, res: NextApiResponse) => {
             })
             socket.broadcast.emit('guestRequest', { user })
           } else {
+            console.log('Guest join failed - room is full')
             socket.emit('joined', { success: false, error: 'Room is full' })
           }
         }
