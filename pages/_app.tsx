@@ -32,15 +32,18 @@ export default function App({ Component, pageProps }: AppProps) {
     
     // Create socket instance with Vercel-compatible configuration
     const socketInstance = io({
-      path: '/api/socket',
-      transports: ['polling', 'websocket'],
-      timeout: 20000,
+      path: '/api/socketio',
+      // Use polling as primary transport for Vercel compatibility
+      transports: ['polling'],
+      timeout: 30000,
       forceNew: true,
       reconnection: true,
-      reconnectionAttempts: 5,
+      reconnectionAttempts: 10,
       reconnectionDelay: 1000,
       reconnectionDelayMax: 5000,
-      autoConnect: true
+      autoConnect: true,
+      upgrade: false, // Disable automatic upgrade to WebSocket
+      rememberUpgrade: false
     })
 
     console.log('Socket instance created:', socketInstance)
@@ -71,6 +74,10 @@ export default function App({ Component, pageProps }: AppProps) {
 
     socketInstance.on('reconnect_error', (error) => {
       console.error('❌ Reconnection error:', error)
+    })
+
+    socketInstance.on('reconnect_failed', () => {
+      console.error('❌ Reconnection failed after all attempts')
     })
 
     setSocket(socketInstance)

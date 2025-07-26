@@ -130,16 +130,23 @@ const ioHandler = (req: NextApiRequest, res: NextApiResponse) => {
       addTrailingSlash: false,
       cors: {
         origin: process.env.NODE_ENV === 'production' 
-          ? [process.env.NEXT_PUBLIC_SITE_URL || '*', 'https://*.vercel.app']
+          ? [process.env.NEXT_PUBLIC_SITE_URL || '*', 'https://*.vercel.app', 'https://vercel.app']
           : '*',
         methods: ['GET', 'POST', 'OPTIONS'],
         credentials: true,
         allowedHeaders: ['Content-Type', 'Authorization']
       },
-      transports: ['polling', 'websocket'],
+      // Use polling as primary transport for Vercel compatibility
+      transports: ['polling'],
       allowEIO3: true,
-      pingTimeout: 60000,
-      pingInterval: 25000
+      pingTimeout: 30000,
+      pingInterval: 10000,
+      upgradeTimeout: 10000,
+      maxHttpBufferSize: 1e6,
+      allowRequest: (req, callback) => {
+        // Allow all requests for now
+        callback(null, true)
+      }
     })
     ;(res.socket as any).server.io = io
 
