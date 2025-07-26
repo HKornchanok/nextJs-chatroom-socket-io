@@ -130,10 +130,16 @@ const ioHandler = (req: NextApiRequest, res: NextApiResponse) => {
       addTrailingSlash: false,
       cors: {
         origin: process.env.NODE_ENV === 'production' 
-          ? process.env.NEXT_PUBLIC_SITE_URL || '*' 
+          ? [process.env.NEXT_PUBLIC_SITE_URL || '*', 'https://*.vercel.app']
           : '*',
-        methods: ['GET', 'POST']
-      }
+        methods: ['GET', 'POST', 'OPTIONS'],
+        credentials: true,
+        allowedHeaders: ['Content-Type', 'Authorization']
+      },
+      transports: ['polling', 'websocket'],
+      allowEIO3: true,
+      pingTimeout: 60000,
+      pingInterval: 25000
     })
     ;(res.socket as any).server.io = io
 
@@ -329,13 +335,13 @@ const ioHandler = (req: NextApiRequest, res: NextApiResponse) => {
             io.emit('newMessage', {
               id: Date.now().toString(),
               user: 'System',
-              message: `${kickedGuest.name} has been kicked from the chat`,
-              timestamp: new Date(),
-              type: 'system'
-            })
+                message: `${kickedGuest.name} has been kicked from the chat`,
+                timestamp: new Date(),
+                type: 'system'
+              })
+            }
           }
-        }
-      })
+        })
 
       // Cancel request (for pending guests)
       socket.on('cancelRequest', () => {

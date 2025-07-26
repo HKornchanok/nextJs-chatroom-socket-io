@@ -30,12 +30,17 @@ export default function App({ Component, pageProps }: AppProps) {
   useEffect(() => {
     console.log('Initializing Socket.IO connection...')
     
-    // Create socket instance with minimal configuration
+    // Create socket instance with Vercel-compatible configuration
     const socketInstance = io({
       path: '/api/socket',
       transports: ['polling', 'websocket'],
-      timeout: 10000,
-      forceNew: true
+      timeout: 20000,
+      forceNew: true,
+      reconnection: true,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
+      autoConnect: true
     })
 
     console.log('Socket instance created:', socketInstance)
@@ -57,6 +62,15 @@ export default function App({ Component, pageProps }: AppProps) {
 
     socketInstance.on('error', (error) => {
       console.error('❌ Socket error:', error)
+    })
+
+    socketInstance.on('reconnect', (attemptNumber) => {
+      console.log('🔄 Reconnected after', attemptNumber, 'attempts')
+      setIsConnected(true)
+    })
+
+    socketInstance.on('reconnect_error', (error) => {
+      console.error('❌ Reconnection error:', error)
     })
 
     setSocket(socketInstance)

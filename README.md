@@ -52,10 +52,29 @@ The application uses WebSocket connections through Socket.IO, which means:
 
 ## Deployment
 
-This application is designed to work across different PCs when deployed. See [DEPLOYMENT.md](./DEPLOYMENT.md) for detailed deployment instructions.
+This application is designed to work across different PCs when deployed. 
+
+### Quick Deploy to Vercel (Recommended)
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/your-username/real-time-chat)
+
+1. **Fork this repository** to your GitHub account
+2. **Click the "Deploy with Vercel" button** above
+3. **Set environment variables**:
+   - `ADMIN_PASSWORD`: Your admin password
+   - `NEXT_PUBLIC_SITE_URL`: Your Vercel deployment URL
+4. **Deploy** and enjoy!
+
+For detailed Vercel deployment instructions, see [VERCEL_DEPLOYMENT.md](./VERCEL_DEPLOYMENT.md).
+
+### Other Deployment Options
+
+See [DEPLOYMENT.md](./DEPLOYMENT.md) for detailed deployment instructions for other platforms.
 
 ### Supported Platforms
-- **Vercel** (Recommended)
+- **Vercel** (Recommended) - [Deployment Guide](./VERCEL_DEPLOYMENT.md)
+- **Railway** - Good for WebSocket applications
+- **Render** - Good for real-time applications
 - **Netlify**
 - **Self-hosted servers**
 - **Any platform supporting Node.js and WebSockets**
