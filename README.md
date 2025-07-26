@@ -74,7 +74,6 @@ See [DEPLOYMENT.md](./DEPLOYMENT.md) for detailed deployment instructions for ot
 
 ### Supported Platforms
 - **Railway** (Recommended) - [Deployment Guide](./RAILWAY_DEPLOYMENT.md) - Best for Socket.IO
-- **Vercel** - [Deployment Guide](./VERCEL_DEPLOYMENT.md) - Limited WebSocket support
 - **Render** - Good for real-time applications
 - **DigitalOcean App Platform** - Full control
 - **Self-hosted servers**

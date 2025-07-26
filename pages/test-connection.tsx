@@ -22,13 +22,11 @@ export default function TestConnection() {
     })
 
     socketInstance.on('connect', () => {
-      console.log('✅ Connected to server with ID:', socketInstance.id)
       setIsConnected(true)
       setMessages(prev => [...prev, `✅ Connected: ${socketInstance.id}`])
     })
 
     socketInstance.on('disconnect', (reason) => {
-      console.log('❌ Disconnected from server:', reason)
       setIsConnected(false)
       setMessages(prev => [...prev, `❌ Disconnected: ${reason}`])
     })
@@ -45,7 +43,6 @@ export default function TestConnection() {
     })
 
     socketInstance.on('reconnect', (attemptNumber) => {
-      console.log('🔄 Reconnected after', attemptNumber, 'attempts')
       setIsConnected(true)
       setMessages(prev => [...prev, `🔄 Reconnected after ${attemptNumber} attempts`])
     })
@@ -63,7 +60,6 @@ export default function TestConnection() {
     setSocket(socketInstance)
 
     return () => {
-      console.log('Cleaning up socket connection')
       socketInstance.disconnect()
     }
   }, [])

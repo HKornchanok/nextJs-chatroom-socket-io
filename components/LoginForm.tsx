@@ -46,7 +46,6 @@ export default function LoginForm() {
 
     // Set up event listeners
     socket.once('joined', (data: { success: boolean; userType?: string; error?: string }) => {
-      console.log('Received joined response:', data)
       setIsLoading(false)
       if (data.success) {
         setUserName(name.trim())
@@ -59,7 +58,6 @@ export default function LoginForm() {
 
     // Listen for approval (for guests)
     socket.once('approved', (data: { userName: string }) => {
-      console.log('Guest approved:', data)
       setIsLoading(false)
       setUserName(name.trim())
       setUserType('guest')
@@ -67,17 +65,11 @@ export default function LoginForm() {
 
     // Listen for rejection (for guests)
     socket.once('rejected', () => {
-      console.log('Guest rejected')
       setIsLoading(false)
       setError('Your request was rejected by the admin')
     })
 
     // Emit join event
-    console.log('Emitting join event:', { 
-      name: name.trim(), 
-      type: userType,
-      password: userType === 'admin' ? password.trim() : undefined
-    })
     
     socket.emit('join', { 
       name: name.trim(), 
@@ -102,7 +94,7 @@ export default function LoginForm() {
       <div className="bg-white rounded-xl shadow-2xl p-8 w-full max-w-md">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-gray-800 mb-2">Welcome to Chat Room</h1>
-          <p className="text-gray-600">Choose your role and enter your name to start chatting</p>
+          <p className="text-gray-600">Enter your name to start chatting</p>
         </div>
 
         {/* Connection Status */}
@@ -209,14 +201,6 @@ export default function LoginForm() {
           </button>
         </form>
 
-        <div className="mt-6 text-center">
-          <div className="text-sm text-gray-500 space-y-1">
-            <p>• Admin can approve/kick guests</p>
-            <p>• Only one guest allowed at a time</p>
-            <p>• Guests need admin approval to join</p>
-            <p>• Admin requires password verification</p>
-          </div>
-        </div>
       </div>
     </div>
   )

@@ -28,8 +28,6 @@ export default function App({ Component, pageProps }: AppProps) {
   const [userName, setUserName] = useState('')
 
   useEffect(() => {
-    console.log('Initializing Socket.IO connection...')
-    
     // Create socket instance with Railway-optimized configuration
     const socketInstance = io({
       path: '/api/socket',
@@ -44,15 +42,11 @@ export default function App({ Component, pageProps }: AppProps) {
       autoConnect: true
     })
 
-    console.log('Socket instance created:', socketInstance)
-
     socketInstance.on('connect', () => {
-      console.log('✅ Connected to server with ID:', socketInstance.id)
       setIsConnected(true)
     })
 
     socketInstance.on('disconnect', (reason) => {
-      console.log('❌ Disconnected from server:', reason)
       setIsConnected(false)
     })
 
@@ -66,7 +60,6 @@ export default function App({ Component, pageProps }: AppProps) {
     })
 
     socketInstance.on('reconnect', (attemptNumber) => {
-      console.log('🔄 Reconnected after', attemptNumber, 'attempts')
       setIsConnected(true)
     })
 
@@ -81,7 +74,6 @@ export default function App({ Component, pageProps }: AppProps) {
     setSocket(socketInstance)
 
     return () => {
-      console.log('Cleaning up socket connection')
       socketInstance.disconnect()
     }
   }, [])
