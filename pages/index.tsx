@@ -4,7 +4,7 @@ import ChatRoom from '../components/ChatRoom'
 import LoginForm from '../components/LoginForm'
 
 export default function Home() {
-  const { userType, socket, setUserType, setUserName } = useContext(ChatContext)
+  const { userType, socket, isConnected, setUserType, setUserName } = useContext(ChatContext)
   const [isLoading, setIsLoading] = useState(false)
   const [waitingTime, setWaitingTime] = useState(0)
 
@@ -80,6 +80,25 @@ export default function Home() {
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
           <p className="mt-4 text-gray-600">Connecting to chat server...</p>
+          <p className="mt-2 text-sm text-gray-500">Please wait while we establish a connection</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (!isConnected) {
+    return (
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-12 h-12 border-4 border-red-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
+          <p className="mt-4 text-gray-600">Connection failed</p>
+          <p className="mt-2 text-sm text-gray-500">Unable to connect to the chat server</p>
+          <button 
+            onClick={() => window.location.reload()} 
+            className="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+          >
+            Retry Connection
+          </button>
         </div>
       </div>
     )

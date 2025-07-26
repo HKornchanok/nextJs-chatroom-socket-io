@@ -1,13 +1,22 @@
-import React, { useState, useContext } from 'react'
+import React, { useState, useContext, useEffect } from 'react'
 import { ChatContext } from '../pages/_app'
 
 export default function LoginForm() {
-  const { socket, setUserType, setUserName } = useContext(ChatContext)
+  const { socket, isConnected, setUserType, setUserName } = useContext(ChatContext)
   const [name, setName] = useState('')
   const [password, setPassword] = useState('')
   const [userType, setLocalUserType] = useState<'admin' | 'guest'>('guest')
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
+
+  // Clear error when connection status changes
+  useEffect(() => {
+    if (!isConnected) {
+      setError('Not connected to server. Please wait...')
+    } else {
+      setError('')
+    }
+  }, [isConnected])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -22,21 +31,22 @@ export default function LoginForm() {
       return
     }
 
-    if (!socket) {
-      setError('Not connected to server')
+    if (!socket || !isConnected) {
+      setError('Not connected to server. Please wait for connection...')
       return
     }
 
     setIsLoading(true)
     setError('')
 
-    socket.emit('join', { 
-      name: name.trim(), 
-      type: userType,
-      password: userType === 'admin' ? password.trim() : undefined
-    })
+    // Remove any existing listeners to prevent duplicates
+    socket.off('joined')
+    socket.off('approved')
+    socket.off('rejected')
 
+    // Set up event listeners
     socket.once('joined', (data: { success: boolean; userType?: string; error?: string }) => {
+      console.log('Received joined response:', data)
       setIsLoading(false)
       if (data.success) {
         setUserName(name.trim())
@@ -46,6 +56,45 @@ export default function LoginForm() {
         setError(data.error || 'Failed to join chat')
       }
     })
+
+    // Listen for approval (for guests)
+    socket.once('approved', (data: { userName: string }) => {
+      console.log('Guest approved:', data)
+      setIsLoading(false)
+      setUserName(name.trim())
+      setUserType('guest')
+    })
+
+    // Listen for rejection (for guests)
+    socket.once('rejected', () => {
+      console.log('Guest rejected')
+      setIsLoading(false)
+      setError('Your request was rejected by the admin')
+    })
+
+    // Emit join event
+    console.log('Emitting join event:', { 
+      name: name.trim(), 
+      type: userType,
+      password: userType === 'admin' ? password.trim() : undefined
+    })
+    
+    socket.emit('join', { 
+      name: name.trim(), 
+      type: userType,
+      password: userType === 'admin' ? password.trim() : undefined
+    })
+
+    // Set a timeout in case the server doesn't respond
+    setTimeout(() => {
+      if (isLoading) {
+        setIsLoading(false)
+        setError('Server timeout. Please try again.')
+        socket.off('joined')
+        socket.off('approved')
+        socket.off('rejected')
+      }
+    }, 10000) // 10 second timeout
   }
 
   return (
@@ -54,6 +103,18 @@ export default function LoginForm() {
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-gray-800 mb-2">Welcome to Chat Room</h1>
           <p className="text-gray-600">Choose your role and enter your name to start chatting</p>
+        </div>
+
+        {/* Connection Status */}
+        <div className={`mb-4 p-3 rounded-lg text-sm ${
+          isConnected 
+            ? 'bg-green-50 text-green-700 border border-green-200' 
+            : 'bg-yellow-50 text-yellow-700 border border-yellow-200'
+        }`}>
+          <div className="flex items-center">
+            <div className={`w-2 h-2 rounded-full mr-2 ${isConnected ? 'bg-green-500' : 'bg-yellow-500'}`}></div>
+            {isConnected ? 'Connected to server' : 'Connecting to server...'}
+          </div>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -134,7 +195,7 @@ export default function LoginForm() {
 
           <button
             type="submit"
-            disabled={isLoading || !name.trim() || (userType === 'admin' && !password.trim())}
+            disabled={isLoading || !name.trim() || (userType === 'admin' && !password.trim()) || !isConnected}
             className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isLoading ? (
