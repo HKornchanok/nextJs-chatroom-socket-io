@@ -2,6 +2,7 @@ import { Server as NetServer } from 'http'
 import { NextApiRequest, NextApiResponse } from 'next'
 import { Server as ServerIO, Socket } from 'socket.io'
 import { ADMIN_CONFIG } from '../../config/admin'
+import { CHATGPT_CONFIG } from '../../config/chatgpt'
 
 export const config = {
   api: {
@@ -363,8 +364,7 @@ const ioHandler = (req: NextApiRequest, res: NextApiResponse) => {
       })
 
       // Send message
-      socket.on('sendMessage', (message: string) => {
-        const users = chatRoom.getUsers()
+      socket.on('sendMessage', async (message: string) => {        const users = chatRoom.getUsers()
         const user = users.admin?.id === socket.id ? users.admin : 
                     users.guest?.id === socket.id ? users.guest : null
         
@@ -387,6 +387,55 @@ const ioHandler = (req: NextApiRequest, res: NextApiResponse) => {
           // Emit user activity update
           const updatedUsers = chatRoom.getUsers()
           io.emit('userActivityUpdate', { users: updatedUsers })
+
+          // If the message is from a guest, generate AI response
+          if (user.type === 'guest') {
+            console.log(`Guest ${user.name} sent message: "${message}" - Generating AI response...`)
+            try {
+              // Call ChatGPT API
+              const response = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/chatgpt`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  message: message,
+                  guestName: user.name
+                })
+              })
+
+              console.log(`ChatGPT API response status: ${response.status}`)
+
+              if (response.ok) {
+                const data = await response.json()
+                const aiResponse = data.response
+                console.log(`AI Response: "${aiResponse}"`)
+
+                // Create AI response message
+                const aiMessage: ChatMessage = {
+                  id: (Date.now() + 1).toString(),
+                  user: CHATGPT_CONFIG.assistantName,
+                  message: aiResponse,
+                  timestamp: new Date(),
+                  type: 'message'
+                }
+
+                // Add small delay to make it feel more natural
+                const delay = CHATGPT_CONFIG.minDelay + Math.random() * (CHATGPT_CONFIG.maxDelay - CHATGPT_CONFIG.minDelay)
+                console.log(`Scheduling AI response in ${delay}ms`)
+                setTimeout(() => {
+                  chatRoom.addMessage(aiMessage)
+                  io.emit('newMessage', aiMessage)
+                  console.log(`AI response sent to chat`)
+                }, delay)
+              } else {
+                console.error(`ChatGPT API error: ${response.status} ${response.statusText}`)
+              }
+            } catch (error) {
+              console.error('Error calling ChatGPT API:', error)
+              // Don't send error message to chat, just log it
+            }
+          }
         }
       })
 
