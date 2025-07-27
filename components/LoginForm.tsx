@@ -2,7 +2,7 @@ import React, { useState, useContext, useEffect } from 'react'
 import { ChatContext } from '../pages/_app'
 
 export default function LoginForm() {
-  const { socket, isConnected, setUserType, setUserName } = useContext(ChatContext)
+  const { socket, isConnected, setUserType, setUserName, setUserId } = useContext(ChatContext)
   const [name, setName] = useState('')
   const [password, setPassword] = useState('')
   const [userType, setLocalUserType] = useState<'admin' | 'guest'>('guest')
@@ -50,6 +50,7 @@ export default function LoginForm() {
       if (data.success) {
         setUserName(name.trim())
         setUserType(data.userType as 'admin' | 'guest' | 'pending')
+        setUserId(socket.id || '') // Set the current user's socket ID
         setPassword('') // Clear password after successful login
       } else {
         setError(data.error || 'Failed to join chat')

@@ -4,7 +4,7 @@ import ChatRoom from '../components/ChatRoom'
 import LoginForm from '../components/LoginForm'
 
 export default function Home() {
-  const { userType, socket, isConnected, setUserType, setUserName } = useContext(ChatContext)
+  const { userType, socket, isConnected, setUserType, setUserName, setUserId } = useContext(ChatContext)
   const [isLoading, setIsLoading] = useState(false)
   const [waitingTime, setWaitingTime] = useState(0)
   const [showRejectedModal, setShowRejectedModal] = useState(false)
@@ -18,6 +18,7 @@ export default function Home() {
     const handleApproved = (data: { userName: string }) => {
       setUserType('guest')
       setUserName(data.userName)
+      setUserId(socket?.id || '')
     }
 
     // Listen for kicked event (for guests)

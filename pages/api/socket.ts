@@ -26,6 +26,7 @@ interface ChatMessage {
   message: string
   timestamp: Date
   type: 'message' | 'system'
+  senderId?: string // Optional sender ID to identify the message sender
 }
 
 class ChatRoom {
@@ -376,7 +377,8 @@ const ioHandler = (req: NextApiRequest, res: NextApiResponse) => {
             user: user.name,
             message,
             timestamp: new Date(),
-            type: 'message'
+            type: 'message',
+            senderId: user.id // Add sender ID to identify the message sender
           }
           
           chatRoom.addMessage(chatMessage)

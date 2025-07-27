@@ -8,8 +8,10 @@ interface ChatContextType {
   isConnected: boolean
   userType: 'admin' | 'guest' | 'pending' | null
   userName: string
+  userId: string
   setUserType: (type: 'admin' | 'guest' | 'pending' | null) => void
   setUserName: (name: string) => void
+  setUserId: (id: string) => void
 }
 
 export const ChatContext = React.createContext<ChatContextType>({
@@ -17,8 +19,10 @@ export const ChatContext = React.createContext<ChatContextType>({
   isConnected: false,
   userType: null,
   userName: '',
+  userId: '',
   setUserType: () => {},
-  setUserName: () => {}
+  setUserName: () => {},
+  setUserId: () => {}
 })
 
 export default function App({ Component, pageProps }: AppProps) {
@@ -26,6 +30,7 @@ export default function App({ Component, pageProps }: AppProps) {
   const [isConnected, setIsConnected] = useState(false)
   const [userType, setUserType] = useState<'admin' | 'guest' | 'pending' | null>(null)
   const [userName, setUserName] = useState('')
+  const [userId, setUserId] = useState('')
 
   useEffect(() => {
     // Create socket instance with Railway-optimized configuration
@@ -84,8 +89,10 @@ export default function App({ Component, pageProps }: AppProps) {
       isConnected,
       userType,
       userName,
+      userId,
       setUserType,
-      setUserName
+      setUserName,
+      setUserId
     }}>
       <Component {...pageProps} />
     </ChatContext.Provider>

@@ -7,6 +7,7 @@ interface Message {
   message: string
   timestamp: Date
   type: 'message' | 'system'
+  senderId?: string // Optional sender ID to identify the message sender
 }
 
 interface User {
@@ -27,7 +28,7 @@ interface Users {
 }
 
 export default function ChatRoom() {
-  const { socket, userType, userName, setUserType, setUserName } = useContext(ChatContext)
+  const { socket, userType, userName, userId, setUserType, setUserName } = useContext(ChatContext)
   const [messages, setMessages] = useState<Message[]>([])
   const [newMessage, setNewMessage] = useState('')
   const [users, setUsers] = useState<Users>({ admin: null, guest: null, pendingGuests: [] })
@@ -61,9 +62,7 @@ export default function ChatRoom() {
   }, [userType])
 
   // Function to send web notification
-  const sendNotification = (title: string, body: string, icon?: string) => {
-    console.log('sending notification', userType, Notification.permission)
-    if (userType !== 'admin'  || Notification.permission !== 'granted') {
+  const sendNotification = (title: string, body: string, icon?: string) => {    if (userType !== 'admin'  || Notification.permission !== 'granted') {
       return
     }
 
@@ -111,15 +110,18 @@ export default function ChatRoom() {
   }
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setNewMessage(e.target.value)
+    const value = e.target.value
+    setNewMessage(value)
     
     // Clear existing timeout
     if (typingTimeoutRef.current) {
       clearTimeout(typingTimeoutRef.current)
     }
     
-    // Start typing indicator
-    handleTypingStart()
+    // Only start typing indicator if we have a value and haven't started yet
+    if (value && !typingUsers.has(socket?.id || '')) {
+      handleTypingStart()
+    }
     
     // Stop typing indicator after 1 second of no input
     typingTimeoutRef.current = setTimeout(() => {
@@ -264,12 +266,17 @@ export default function ChatRoom() {
       }
       
       setUsers(usersWithDates)
-      // Convert message timestamps to Date objects
-      const messagesWithDates = data.messages.map(message => ({
-        ...message,
-        timestamp: new Date(message.timestamp)
-      }))
-      setMessages(messagesWithDates)
+      
+      // Only update messages if we have existing messages (don't overwrite with empty array)
+      if (data.messages.length > 0) {
+        // Convert message timestamps to Date objects
+        const messagesWithDates = data.messages.map(message => ({
+          ...message,
+          timestamp: new Date(message.timestamp)
+        }))
+        setMessages(messagesWithDates)
+      }
+      
       // Also set pending guests from the room state
       setPendingGuests(usersWithDates.pendingGuests || [])
     })
@@ -424,9 +431,7 @@ export default function ChatRoom() {
   }
 
   const requestNotificationPermission = () => {
-    console.log('requesting notification permission')
       Notification.requestPermission().then((permission) => {
-        console.log('notification permission', permission)
         setNotificationPermission(permission)
       })
   }
@@ -488,7 +493,7 @@ export default function ChatRoom() {
           {/* Messages */}
           <div className="flex-1 overflow-y-auto p-4 space-y-6">
             {messages.map((message) => {
-              const isOwnMessage = message.user === userName
+              const isOwnMessage = message.senderId === userId || message.user === userName
               
               // Only show system messages to admins
               if (message.type === 'system' && userType !== 'admin') {
