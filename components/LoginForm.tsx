@@ -1,5 +1,11 @@
 import React, { useState, useContext, useEffect } from 'react'
 import { ChatContext } from '../pages/_app'
+import LoginHeader from './LoginHeader'
+import ConnectionStatus from './ConnectionStatus'
+import LoginFormFields from './LoginFormFields'
+import UserTypeSelector from './UserTypeSelector'
+import ErrorDisplay from './ErrorDisplay'
+import SubmitButton from './SubmitButton'
 
 export default function LoginForm() {
   const { socket, isConnected, setUserType, setUserName } = useContext(ChatContext)
@@ -92,115 +98,33 @@ export default function LoginForm() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
       <div className="bg-white rounded-xl shadow-2xl p-8 w-full max-w-md">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-800 mb-2">Welcome to Chat Room</h1>
-          <p className="text-gray-600">Enter your name to start chatting</p>
-        </div>
+        <LoginHeader />
 
-        {/* Connection Status */}
-        <div className={`mb-4 p-3 rounded-lg text-sm ${
-          isConnected 
-            ? 'bg-green-50 text-green-700 border border-green-200' 
-            : 'bg-yellow-50 text-yellow-700 border border-yellow-200'
-        }`}>
-          <div className="flex items-center">
-            <div className={`w-2 h-2 rounded-full mr-2 ${isConnected ? 'bg-green-500' : 'bg-yellow-500'}`}></div>
-            {isConnected ? 'Connected to server' : 'Connecting to server...'}
-          </div>
-        </div>
+        <ConnectionStatus isConnected={isConnected} />
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Your Name
-            </label>
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
-              placeholder="Enter your name"
-              disabled={isLoading}
-            />
-          </div>
+          <LoginFormFields
+            name={name}
+            password={password}
+            userType={userType}
+            isLoading={isLoading}
+            onNameChange={setName}
+            onPasswordChange={setPassword}
+          />
 
-          {userType === 'admin' && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Admin Password
-              </label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
-                placeholder="Enter admin password"
-                disabled={isLoading}
-              />
-            </div>
-          )}
+          <UserTypeSelector
+            userType={userType}
+            onUserTypeChange={setLocalUserType}
+            isLoading={isLoading}
+          />
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-3">
-              Join as
-            </label>
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                type="button"
-                onClick={() => setLocalUserType('admin')}
-                className={`p-4 rounded-lg border-2 transition-all ${
-                  userType === 'admin'
-                    ? 'border-blue-500 bg-blue-50 text-blue-700'
-                    : 'border-gray-200 hover:border-gray-300'
-                }`}
-                disabled={isLoading}
-              >
-                <div className="text-center">
-                  <div className="text-lg font-semibold">👑 Admin</div>
-                  <div className="text-sm text-gray-500">Manage chat room</div>
-                </div>
-              </button>
-              
-              <button
-                type="button"
-                onClick={() => setLocalUserType('guest')}
-                className={`p-4 rounded-lg border-2 transition-all ${
-                  userType === 'guest'
-                    ? 'border-green-500 bg-green-50 text-green-700'
-                    : 'border-gray-200 hover:border-gray-300'
-                }`}
-                disabled={isLoading}
-              >
-                <div className="text-center">
-                  <div className="text-lg font-semibold">👤 Guest</div>
-                  <div className="text-sm text-gray-500">Request to join</div>
-                </div>
-              </button>
-            </div>
-          </div>
+          <ErrorDisplay error={error} />
 
-          {error && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-3">
-              <p className="text-red-600 text-sm">{error}</p>
-            </div>
-          )}
-
-          <button
-            type="submit"
-            disabled={isLoading || !name.trim() || (userType === 'admin' && !password.trim()) || !isConnected}
-            className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {isLoading ? (
-              <div className="flex items-center justify-center">
-                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
-                Joining...
-              </div>
-            ) : (
-              'Join Chat Room'
-            )}
-          </button>
+          <SubmitButton
+            isLoading={isLoading}
+            isDisabled={isLoading || !name.trim() || (userType === 'admin' && !password.trim()) || !isConnected}
+          />
         </form>
-
       </div>
     </div>
   )
