@@ -13,6 +13,7 @@ Railway is one of the best platforms for hosting Socket.IO applications due to i
 ### Option 1: Deploy via Railway Dashboard (Recommended)
 
 1. **Push your code to GitHub**
+
    ```bash
    git add .
    git commit -m "Prepare for Railway deployment"
@@ -42,16 +43,19 @@ Railway is one of the best platforms for hosting Socket.IO applications due to i
 ### Option 2: Deploy via Railway CLI
 
 1. **Install Railway CLI**
+
    ```bash
    npm install -g @railway/cli
    ```
 
 2. **Login to Railway**
+
    ```bash
    railway login
    ```
 
 3. **Initialize and Deploy**
+
    ```bash
    railway init
    railway up
@@ -68,22 +72,26 @@ Railway is one of the best platforms for hosting Socket.IO applications due to i
 
 ### Required Variables
 
-| Variable | Description | Example |
-|----------|-------------|---------|
-| `ADMIN_PASSWORD` | Password for admin login | `my-secure-password-123` |
+| Variable               | Description                 | Example                        |
+| ---------------------- | --------------------------- | ------------------------------ |
+| `ADMIN_PASSWORD`       | Password for admin login    | `my-secure-password-123`       |
 | `NEXT_PUBLIC_SITE_URL` | Your Railway deployment URL | `https://your-app.railway.app` |
-| `NODE_ENV` | Environment setting | `production` |
+| `NODE_ENV`             | Environment setting         | `production`                   |
 
 ## Railway Configuration
 
 ### Automatic Detection
+
 Railway automatically detects Next.js projects and configures:
+
 - Build command: `npm run build`
 - Start command: `npm start`
 - Node.js environment
 
 ### Custom Configuration (Optional)
+
 Create `railway.json` for custom settings:
+
 ```json
 {
   "build": {
@@ -101,21 +109,25 @@ Create `railway.json` for custom settings:
 ## Advantages of Railway for Socket.IO
 
 ### ✅ **WebSocket Support**
+
 - Full WebSocket support without limitations
 - Persistent connections work perfectly
 - No serverless function timeouts
 
 ### ✅ **Performance**
+
 - No cold starts
 - Consistent performance
 - Better for real-time applications
 
 ### ✅ **Scalability**
+
 - Automatic scaling based on demand
 - Better resource allocation
 - More predictable pricing
 
 ### ✅ **Development Experience**
+
 - Easy deployment from GitHub
 - Automatic builds on push
 - Built-in logging and monitoring
@@ -142,17 +154,21 @@ Create `railway.json` for custom settings:
 ## Monitoring and Logs
 
 ### View Logs
+
 ```bash
 railway logs
 ```
 
 ### Monitor Performance
+
 - Go to your Railway dashboard
 - Check "Metrics" tab for performance data
 - Monitor resource usage
 
 ### Health Checks
+
 Railway automatically health checks your application:
+
 - Endpoint: `/`
 - Timeout: 300 seconds
 - Restart policy: On failure
@@ -195,11 +211,13 @@ railway shell
 ## Pricing
 
 ### Free Tier
+
 - $5 credit per month
 - Suitable for development and small projects
 - Automatic sleep after inactivity
 
 ### Paid Plans
+
 - Pay-as-you-go pricing
 - No sleep on paid plans
 - Better performance and resources
@@ -237,4 +255,4 @@ After successful deployment:
 - [Railway Discord](https://discord.gg/railway)
 - [GitHub Issues](https://github.com/railwayapp/railway)
 
-Railway is an excellent choice for Socket.IO applications and should provide much better performance and reliability than Vercel for your real-time chat app! 
+Railway is an excellent choice for Socket.IO applications and should provide much better performance and reliability than Vercel for your real-time chat app!

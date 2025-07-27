@@ -1,6 +1,7 @@
 # Deployment Guide for Real-Time Chat
 
 ## Overview
+
 This real-time chat application uses Socket.IO for real-time communication and can be deployed across different PCs.
 
 ## Environment Variables
@@ -18,17 +19,20 @@ ADMIN_PASSWORD=your-secure-admin-password
 ## Deployment Options
 
 ### 1. Vercel (Recommended)
+
 - Connect your GitHub repository to Vercel
 - Set environment variables in Vercel dashboard
 - Deploy automatically on push
 
 ### 2. Netlify
+
 - Connect your GitHub repository to Netlify
 - Set build command: `npm run build`
 - Set publish directory: `.next`
 - Add environment variables in Netlify dashboard
 
 ### 3. Self-Hosted Server
+
 ```bash
 # Build the application
 npm run build
@@ -63,4 +67,4 @@ npm start
 
 - **Connection issues**: Check that `NEXT_PUBLIC_SITE_URL` is set correctly
 - **WebSocket errors**: Ensure your hosting provider supports WebSockets
-- **Admin login fails**: Verify the admin password in your environment variables 
+- **Admin login fails**: Verify the admin password in your environment variables
