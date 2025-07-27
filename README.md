@@ -6,6 +6,7 @@ A real-time chat application built with Next.js and Socket.IO that supports admi
 
 - **Real-time messaging** with Socket.IO
 - **Admin-Guest system** with approval workflow
+- **AI-powered responses** - ChatGPT automatically responds to guest messages
 - **Typing indicators** to show when users are typing
 - **Admin controls** - approve/reject guests, kick users
 - **Cross-platform** - works across different PCs and devices
@@ -24,8 +25,14 @@ The application uses WebSocket connections through Socket.IO, which means:
 
 ### User Types
 1. **Admin**: Can approve/reject guests, kick users, send messages
-2. **Guest**: Must be approved by admin before joining the chat
+2. **Guest**: Must be approved by admin before joining the chat, receives AI responses
 3. **Pending Guest**: Waiting for admin approval
+
+### AI Integration
+- **ChatGPT Responses**: When guests send messages, the AI assistant automatically responds
+- **Natural Conversations**: AI responses are delayed by 1-3 seconds to feel more natural
+- **Contextual Responses**: AI considers the guest's name and message content
+- **Admin Monitoring**: Admins can see all AI responses in the chat
 
 ## Quick Start
 
@@ -39,6 +46,7 @@ The application uses WebSocket connections through Socket.IO, which means:
    ```env
    NEXT_PUBLIC_SITE_URL=http://localhost:3000
    ADMIN_PASSWORD=your-admin-password
+   OPENAI_API_KEY=your_openai_api_key_here
    ```
 
 3. **Run development server**
@@ -49,6 +57,8 @@ The application uses WebSocket connections through Socket.IO, which means:
 4. **Open in browser**
    - Visit `http://localhost:3000`
    - Join as admin or guest
+   - Test ChatGPT integration at `http://localhost:3000/test-chatgpt`
+   - Test ChatGPT integration at `http://localhost:3000/test-chatgpt`
 
 ## Deployment
 
@@ -63,6 +73,7 @@ This application is designed to work across different PCs when deployed.
 3. **Set environment variables**:
    - `ADMIN_PASSWORD`: Your admin password
    - `NEXT_PUBLIC_SITE_URL`: Your Railway deployment URL
+   - `OPENAI_API_KEY`: Your OpenAI API key (get from https://platform.openai.com/api-keys)
    - `NODE_ENV`: `production`
 4. **Deploy** and enjoy!
 
@@ -83,6 +94,7 @@ See [DEPLOYMENT.md](./DEPLOYMENT.md) for detailed deployment instructions for ot
 
 - **Frontend**: Next.js, React, TypeScript
 - **Real-time**: Socket.IO
+- **AI Integration**: OpenAI ChatGPT API
 - **Styling**: Tailwind CSS
 - **Deployment**: Works on any Node.js hosting platform
 
