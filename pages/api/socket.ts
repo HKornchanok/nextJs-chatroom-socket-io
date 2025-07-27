@@ -392,8 +392,12 @@ const ioHandler = (req: NextApiRequest, res: NextApiResponse) => {
           if (user.type === 'guest') {
             console.log(`Guest ${user.name} sent message: "${message}" - Generating AI response...`)
             try {
-              // Call ChatGPT API
-              const response = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/chatgpt`, {
+              // Call ChatGPT API - use full URL for server-side API calls
+              const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 
+                             (process.env.NODE_ENV === 'production' ? 
+                               `https://${process.env.RAILWAY_STATIC_URL || process.env.VERCEL_URL || 'localhost:3000'}` : 
+                               'http://localhost:3000')
+              const response = await fetch(`${baseUrl}/api/chatgpt`, {
                 method: 'POST',
                 headers: {
                   'Content-Type': 'application/json',
